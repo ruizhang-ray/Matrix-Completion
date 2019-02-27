@@ -1,0 +1,136 @@
+---
+title: "Well-posedness condition"
+author: "Rui Zhang"
+date: "02/26/2019"
+output:
+  html_document:
+    number_sections: true
+    toc: yes
+  pdf_document:
+    toc: yes
+bibliography: ref.bib
+---
+
+```{r knitr-opts,include=FALSE,purl=FALSE}
+library(knitr)
+prefix = 'rmd'
+opts_chunk$set(
+  progress=TRUE,
+  prompt=FALSE,tidy=FALSE,highlight=TRUE,
+  strip.white=TRUE,
+  warning=FALSE,
+  message=FALSE,
+  error=FALSE,
+  echo=TRUE,
+#  cache=TRUE,
+  cache.extra=rand_seed,
+  results='markup',
+  fig.show='asis',
+  size='small',
+  fig.lp="fig:",
+  fig.path=paste0("figure/",prefix,"-"),
+  cache.path=paste0("cache/",prefix,"-"),
+  fig.pos="h!",
+  fig.align='center',
+  fig.height=4,fig.width=6.83,
+  dpi=300,
+  dev='png',
+  dev.args=list(bg='transparent')
+)
+
+options(
+  keep.source=TRUE,
+  encoding="UTF-8"
+)
+```
+
+# Introduction
+
+This is a document to briefly explain the well-posedness condition in @Shapiro and provide an example of checking the well-posedness condition.
+
+# Problem setting 
+Consider the following Minimum Rank Matrix Completion (MRMC) problem:
+$$
+\min_{Y\in \mathbb R^{n_1\times n_2}} {\rm rank}(Y) {\rm\,\,\, subject\, to\,} Y_{ij} =  M_{ij}
+$$
+**Definition** (Well-posedness condition).  
+*We say that a matrix $Y\in\mathcal M_r$ is well-posed for MRMC problem, if $P_\Omega(Y) = M$ and the following condition holds*
+$$
+\label{wp}
+\tag{1}
+\mathbb V_{\Omega^c}\cap \mathcal T_{\mathcal M_r}(Y) = \{0\}.
+$$
+
+In @Shapiro, we also propose an equivalent condition of well-posedness condition, which we can apply in practice.
+
+**Theorem III.3**(Equivalent condition  of well-posedness)
+
+*Matrix $Y\in \mathcal M_r$ satisfies condition ($\ref{wp}$) if and only if  for any left side complement $F$ and right side complement $G$  of $Y$, the column vectors $g_{j}^\top \otimes  f_i$, $(i,j)\in \Omega^c$, are linearly independent.*
+
+It is easy to verify that if there exists one left side complement $F$ and right side complement $G$  the above condition is satisfied, then for any left side complement $F$ and right side complement $G$ is satisfied. According to it, the following is a function (in R) for checking well-posedness condition.
+
+``` {r function for well-posedness}
+require(Matrix)
+require(rTensor)
+require(MASS)
+check_wp<-function(Pomega, Y){
+  n1 = dim(Y)[1]
+  n2 = dim(Y)[2]
+  m = sum(!is.na(Pomega))
+  VV = t(Null(Y))
+  WW = Null(t(Y))
+  WW_VV = kronecker_list(list(t(WW), VV))
+  VEC_X = as.vector(Pomega)
+  OmegaC = which(is.na(VEC_X))
+  return(rankMatrix(WW_VV[,OmegaC])== n1*n2-m)
+}
+
+```
+
+**Example**  $6\times 6$ well-posed matrix [@wil].
+
+$$
+M = \left(
+\begin{array}{cccccc}
+*&0.56&0.16&0.48&0.24&0.64\\
+0.56&*&0.20&0.66 & 0.51&0.86\\
+0.16&0.20&*&0.18&0.07&0.23\\
+0.48&0.66&0.18&*&0.30&0.72\\
+0.24&0.51&0.07&0.30&*&0.41\\
+0.64&0.86&0.23&0.72&0.41&*
+\end{array}\right)
+$$
+In @wil, it is proved there are only two solutions of it, $D1 = (0.64, 0.85,0.06,0.56,0.50,0.93)$ and $D2 = (0.42, 0.90, 0.06, 0.55, 0.39, 1.00)$. Therefore, the MRMC problem should be well-posed since both solution are locally unique.
+
+Now we check the well-posedness condition of these two solution.
+
+```{r check_wp6by6}
+M = matrix(c(0,0.56,0.16,0.48,0.24,0.64,
+             0.56,0,0.2,0.66,0.51,0.86,
+             0.16,0.2, 0,0.18,0.07,0.23,
+             0.48,0.66,0.18,0,0.30,0.72,
+             0.24,0.51,0.07,0.3,0,0.41,
+             0.64,0.86,0.23,0.72,0.41,0
+             ), ncol = 6)
+Pomega = matrix(1, ncol = 6, nrow =6) - diag(NA,6,6)
+Y1 = M + diag(c(0.64,0.85,0.06,0.56,0.5,0.93))
+Y2 = M + diag(c(432/1015,1173/1300,311/4900,711/1300,116/300,998/1000))
+```
+Now, we can check whether both solutions are well-posed.
+```{r check 6 by 6}
+check_wp(Pomega, Y1)
+check_wp(Pomega, Y2)
+```
+As we can see, to check well-posedness condition, we need to know the true matrix. Therefore in @Shapiro, with a numerical experiment, we show that when $r \leq \mathfrak R(n_1,n_2,n_1n_2p) - 3$, $Y\in\mathcal M_r$ and each entry is being observed with probability $p$, the MRMC problem is well-posed with high probability. For a square matrix, we have the following relationship between $\frac{r+3}{n}$ and $p$:
+$$
+p\geq \frac{r+3}{n}(2-\frac{r+3}{n})
+$$
+
+```{r plot}
+x = seq(0,1,0.05)
+y = x*(2-x)
+plot(x,y, xlab = '(r+3)/n', ylab = 'p', type = 'l')
+```
+
+----
+##References
